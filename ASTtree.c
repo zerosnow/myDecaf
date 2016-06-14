@@ -7,6 +7,12 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+unsigned int label = 0;
+char truelists[10];
+char falselists[10];
+char nextlists[10];
+char loop[10];
+
 void error(char *log, char *name);
 
 struct Node *mkNode(NodeType type, int num, ...)
@@ -328,6 +334,7 @@ void Check(struct Node *header)
 	SymbolCheck(header);
 	TypeCheck(header);
 }
+
 void TypeCheck(struct Node *header)
 {
 	int i;
@@ -449,9 +456,9 @@ void genTAC(struct Node *header)
 {
 	int i;
 	CodeLine *temp;
-	if (header->num == 0)return;
+	//if (header->num == 0)return;
 	if (header->nodeType == Node_SFunctionDef || header->nodeType == Node_FunctionDef) {
-		header->tac = CreateTAC(strcat(header->node[1]->name, ":"), NULL, NULL, NULL);
+		header->tac = CreateTAC(header->node[1]->name, ":", NULL, NULL);
 		
 		if (header->node[3]->tac == NULL)
 			genTAC(header->node[3]);
@@ -491,10 +498,81 @@ void genTAC(struct Node *header)
 		strcpy(header->place, header->node[0]->place);
 	}
 	else if (header->nodeType == Node_IfStmt) {
+		if (header->num == 2) {
+			if (header->node[0]->tac == NULL)
+				genTAC(header->node[0]);
+			if (header->node[1]->tac == NULL)
+				genTAC(header->node[1]);
+			sprintf(truelists, "true%d", label);
+			sprintf(nextlists, "next%d", label);
+			label++;
+			header->tac = LinkTAC(header->node[0]->tac, 
+				LinkTAC(CreateTAC("if", header->node[0]->place, "goto", truelists), 
+				LinkTAC(CreateTAC("goto", nextlists, NULL, NULL),
+				LinkTAC(CreateTAC(truelists, ":", NULL, NULL),
+				LinkTAC(header->node[1]->tac, CreateTAC(nextlists, ":", NULL, NULL))))));
+		}
+		else if (header->num == 3) {
+			if (header->node[0]->tac == NULL)
+				genTAC(header->node[0]);
+			if (header->node[1]->tac == NULL)
+				genTAC(header->node[1]);
+			if (header->node[2]->tac == NULL)
+				genTAC(header->node[2]);
+			sprintf(truelists, "true%d", label);
+			sprintf(falselists, "false%d", label);
+			sprintf(nextlists, "next%d", label);
+			label++;
+			header->tac = LinkTAC(header->node[0]->tac, 
+				LinkTAC(CreateTAC("if", header->node[0]->place, "goto", truelists), 
+				LinkTAC(CreateTAC("goto", falselists, NULL, NULL),
+				LinkTAC(CreateTAC(truelists, ":", NULL, NULL),
+				LinkTAC(header->node[1]->tac, 
+				LinkTAC(CreateTAC("goto", nextlists, NULL, NULL),
+				LinkTAC(CreateTAC(falselists, ":", NULL, NULL),
+				LinkTAC(header->node[2]->tac, 
+				LinkTAC(CreateTAC("goto", nextlists, NULL, NULL), CreateTAC(nextlists, ":", NULL, NULL))))))))));
+		}
 	}
 	else if (header->nodeType == Node_WhileStmt) {
+		if (header->node[0]->tac == NULL)
+			genTAC(header->node[0]);
+		if (header->node[1]->tac == NULL)
+			genTAC(header->node[1]);
+		sprintf(loop, "loop%d", label);
+		sprintf(truelists, "true%d", label);
+		sprintf(nextlists, "next%d", label);
+		label++;
+		header->tac = LinkTAC(CreateTAC(loop, ":", NULL, NULL),
+			LinkTAC(header->node[0]->tac, 
+			LinkTAC(CreateTAC("if", header->node[0]->place, "goto", truelists), 
+			LinkTAC(CreateTAC("goto", nextlists, NULL, NULL),
+			LinkTAC(CreateTAC(truelists, ":", NULL, NULL),
+			LinkTAC(header->node[1]->tac, 
+			LinkTAC(CreateTAC("goto", loop, NULL, NULL), CreateTAC(nextlists, ":", NULL, NULL))))))));
 	}
 	else if (header->nodeType == Node_ForStmt) {
+		if (header->node[0]->tac == NULL)
+			genTAC(header->node[0]);
+		if (header->node[1]->tac == NULL)
+			genTAC(header->node[1]);
+		if (header->node[2]->tac == NULL)
+			genTAC(header->node[2]);
+		if (header->node[3]->tac == NULL)
+			genTAC(header->node[3]);
+		sprintf(loop, "loop%d", label);
+		sprintf(truelists, "true%d", label);
+		sprintf(nextlists, "next%d", label);
+		label++;
+		header->tac = LinkTAC(header->node[0]->tac,
+			LinkTAC(CreateTAC(loop, ":", NULL, NULL),
+			LinkTAC(header->node[1]->tac, 
+			LinkTAC(CreateTAC("if", header->node[1]->place, "goto", truelists), 
+			LinkTAC(CreateTAC("goto", nextlists, NULL, NULL),
+			LinkTAC(CreateTAC(truelists, ":", NULL, NULL),
+			LinkTAC(header->node[2]->tac, 
+			LinkTAC(header->node[3]->tac,
+			LinkTAC(CreateTAC("goto", loop, NULL, NULL), CreateTAC(nextlists, ":", NULL, NULL))))))))));
 	}
 	else if (header->nodeType == Node_PrintStmt) {
 		if (header->node[0]->tac == NULL)

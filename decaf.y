@@ -148,7 +148,7 @@ MYWHILE '(' BoolExpr ')' StmtBlock {$$ = mkNode(Node_WhileStmt, 2, $3, $5);}
 ;
 IfStmt:
 MYIF '(' BoolExpr ')' StmtBlock {$$ = mkNode(Node_IfStmt, 2, $3, $5);}
-|IfStmt MYELSE StmtBlock {$$ = mkNode(Node_IfStmt, 2, $1, $3);}
+|MYIF '(' BoolExpr ')' StmtBlock MYELSE StmtBlock {$$ = mkNode(Node_IfStmt, 3, $3, $5, $7);}
 ;
 ReturnStmt:
 MYRETURN {$$ = mkNode(Node_ReturnStmt, 0);}
